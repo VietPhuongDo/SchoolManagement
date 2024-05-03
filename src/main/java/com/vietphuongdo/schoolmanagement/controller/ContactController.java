@@ -4,21 +4,22 @@ import com.vietphuongdo.schoolmanagement.model.Contact;
 import com.vietphuongdo.schoolmanagement.service.ContactService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.Errors;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.context.annotation.RequestScope;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.ModelAndView;
+
+import java.util.List;
 
 
-
-@Controller
 @Slf4j
-@RequestScope
+@Controller
 public class ContactController {
-    private ContactService contactService;
+
+    private final ContactService contactService;
+
 
     public ContactController(ContactService contactService) {
         this.contactService = contactService;
@@ -26,19 +27,34 @@ public class ContactController {
 
     @RequestMapping("/contact")
     public String displayContactPage(Model model) {
-        model.addAttribute("contact",new Contact());
-        return "contact";
+        model.addAttribute("contact", new Contact());
+        return "contact.html";
     }
 
     @PostMapping(value = "/saveMsg")
-    public String sendMessage(@Valid @ModelAttribute("contact") Contact contact, Errors errors){
-        if (errors.hasErrors()){
-            log.error("contact failed due to"+ errors);
-            return "contact";
+    public String saveMessage(@Valid @ModelAttribute("contact") Contact contact, Errors errors) {
+        if(errors.hasErrors()){
+            log.error("Contact form validation failed due to : " + errors.toString());
+            return "contact.html";
         }
-        contactService.sendMessageDetail(contact);
-        contactService.setCounter(contactService.getCounter()+1);
-        log.info("Number of times the Contact form is submitted : "+contactService.getCounter());
+        contactService.saveMessageDetails(contact);
         return "redirect:/contact";
     }
+
+    @RequestMapping("/displayMessages")
+    public ModelAndView displayMessages(Model model) {
+        List<Contact> contactMsgs = contactService.findMsgsWithOpenStatus();
+        ModelAndView modelAndView = new ModelAndView("messages.html");
+        modelAndView.addObject("contactMsgs",contactMsgs);
+        return modelAndView;
+    }
+
+    @GetMapping(value = "/closeMsg")
+    public String closeMsg(@RequestParam int id) {
+        contactService.updateMsgStatus(id);
+        return "redirect:/displayMessages";
+    }
+
+
+
 }
